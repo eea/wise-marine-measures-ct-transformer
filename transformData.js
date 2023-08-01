@@ -9,9 +9,46 @@ function generateUID() {
   return uid;
 }
 
+const mergeObjects = (merged, item) => {
+  const omitFields = [
+    "UID",
+    "contributors",
+    "created",
+    "creators",
+    "lock",
+    "modified",
+    "parent",
+    "subjects",
+    "workflow_history",
+  ];
+
+  for (const key in item) {
+    if (!omitFields.includes(key)) {
+      if (!merged.hasOwnProperty(key)) {
+        merged[key] = item[key];
+      } else if (Array.isArray(merged[key])) {
+        if (
+          item[key] !== undefined &&
+          item[key] !== null &&
+          !merged[key].includes(item[key])
+        ) {
+          merged[key].push(item[key]);
+        }
+      } else if (merged[key] !== item[key]) {
+        if (merged[key] !== undefined && merged[key] !== null) {
+          merged[key] = [merged[key], item[key]];
+        } else {
+          merged[key] = item[key];
+        }
+      }
+    }
+  }
+  return merged;
+};
+
 function transformData(data, parentFolder, parentUID) {
   console.log("Initial Array is :", data.length, " items long");
-  return data.map((item) => {
+  const mappedData = data.map((item) => {
     const {
       CodeCatalogue,
       Sector,
@@ -60,7 +97,7 @@ function transformData(data, parentFolder, parentUID) {
     measureID = measureID.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "");
 
     return {
-      "@id": `${parentFolder}/${measureID}_${CodeCatalogue.toLowerCase()}`,
+      "@id": `${parentFolder}/${measureID}`,
       "@type": "spmeasure",
       UID: generateUID(),
       allow_discussion: false,
@@ -126,6 +163,45 @@ function transformData(data, parentFolder, parentUID) {
       working_copy_of: null,
     };
   });
+
+  // Group items with the same measure_name and merge their data
+  const groupedData = mappedData.reduce((acc, item) => {
+    const measureID = item.measure_name
+      .replace(/[^a-zA-Z0-9 ]/g, "_")
+      .replace(/\s+/g, "_")
+      .substring(0, 50)
+      .toLowerCase()
+      .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "");
+
+    const existingItem = acc.find(
+      (groupedItem) => groupedItem.measure_name === item.measure_name
+    );
+
+    if (!existingItem) {
+      acc.push({
+        ...item,
+        id: measureID,
+        "@id": `${parentFolder}/${measureID}`,
+        UID: generateUID(),
+        parent: {
+          "@id": parentFolder,
+          "@type": "Document",
+          UID: parentUID,
+          description: "Work in progress",
+          image_field: null,
+          image_scales: null,
+          review_state: "private",
+          title: parentFolder,
+        },
+      });
+    } else {
+      mergeObjects(existingItem, item);
+    }
+
+    return acc;
+  }, []);
+
+  return groupedData;
 }
 
 module.exports = transformData;

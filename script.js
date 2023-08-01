@@ -16,7 +16,7 @@ const transformedData = transformData(data, parentFolder, parentUID);
 
 // Write transformedData to a JSON file
 // change the name if you want
-const fileName = "transformed_data.json";
+const fileName = "transformed_data_merged.json";
 const jsonContent = JSON.stringify(transformedData, null, 2);
 
 fs.writeFile(fileName, jsonContent, "utf8", (err) => {
