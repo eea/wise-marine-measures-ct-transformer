@@ -1,3 +1,5 @@
+const eeaCountries = require("./eeaCountries");
+
 function generateUID() {
   let uid = "";
   const characters =
@@ -8,6 +10,32 @@ function generateUID() {
   }
   return uid;
 }
+
+function findValueByLabel(label) {
+  const country = eeaCountries.find((country) => country.label === label);
+  return country ? country.value : null;
+}
+
+const generateGeolocation = (countryCov) => {
+  var geoLoc = [];
+  if (Array.isArray(countryCov)) {
+    countryCov.forEach((country) => {
+      geoLoc.push({
+        label: country,
+        value: findValueByLabel(country),
+      });
+    });
+  }
+  if (typeof countryCov === "string") {
+    geoLoc = [
+      {
+        label: countryCov,
+        value: findValueByLabel(countryCov),
+      },
+    ];
+  }
+  return geoLoc;
+};
 
 const mergeObjects = (merged, item) => {
   const omitFields = [
@@ -193,6 +221,29 @@ function transformData(data, parentFolder, parentUID) {
           review_state: "private",
           title: parentFolder,
         },
+        topics: ["Marine", "Water and marine environment"],
+        temporal_coverage: {
+          temporal: [
+            {
+              label: "2021",
+              value: "2021",
+            },
+          ],
+        },
+        publisher: ["EEA"],
+        other_organisations: ["ETC/ICM"],
+        geo_coverage: {
+          geolocation: [
+            {
+              label: "Albania",
+              value: "geo-783754",
+            },
+            {
+              label: "Portugal",
+              value: "geo-2264397",
+            },
+          ],
+        },
       });
     } else {
       mergeObjects(existingItem, item);
@@ -201,7 +252,18 @@ function transformData(data, parentFolder, parentUID) {
     return acc;
   }, []);
 
-  return groupedData;
+  // Set eea core metadata country coverage with codes
+  const withGeoCoverage = groupedData.map((item, i) => {
+    const newItem = { ...item };
+    newItem.geo_coverage = {
+      geolocation: item?.country_coverage
+        ? generateGeolocation(item.country_coverage)
+        : "",
+    };
+    return newItem;
+  });
+
+  return withGeoCoverage;
 }
 
 module.exports = transformData;
