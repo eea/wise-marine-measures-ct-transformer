@@ -1,5 +1,39 @@
 const eeaCountries = require("./eeaCountries");
 
+const omitFields = [
+  "UID",
+  "contributors",
+  "created",
+  "creators",
+  "lock",
+  "modified",
+  "parent",
+  "subjects",
+  "workflow_history",
+];
+
+measure_field_names = [
+  "sector",
+  "use",
+  "origin",
+  "nature",
+  "status",
+  "impacts",
+  "impacts_further_details",
+  "water_body_cat",
+  "spatial_scope",
+  "country_coverage",
+  "measure_purpose",
+  "measure_type",
+  "measure_location",
+  "measure_response",
+  "measure_additional_info",
+  "pressure_type",
+  "pressure_name",
+  "ranking",
+  "season",
+];
+
 function generateUID() {
   let uid = "";
   const characters =
@@ -38,35 +72,42 @@ const generateGeolocation = (countryCov) => {
 };
 
 const mergeObjects = (merged, item) => {
-  const omitFields = [
-    "UID",
-    "contributors",
-    "created",
-    "creators",
-    "lock",
-    "modified",
-    "parent",
-    "subjects",
-    "workflow_history",
-  ];
-
   for (const key in item) {
-    if (!omitFields.includes(key)) {
+    if (!omitFields.includes(key) && measure_field_names.includes(key)) {
       if (!merged.hasOwnProperty(key)) {
-        merged[key] = item[key];
+        if (item[key] !== "" && item[key] !== undefined && item[key] !== null) {
+          merged[key] = [].push(item[key]);
+        } else merged[key] = [];
       } else if (Array.isArray(merged[key])) {
         if (
+          item[key] !== "" &&
           item[key] !== undefined &&
           item[key] !== null &&
+          merged[key] !== "" &&
+          merged[key] !== undefined &&
+          merged[key] !== null &&
           !merged[key].includes(item[key])
         ) {
           merged[key].push(item[key]);
         }
       } else if (merged[key] !== item[key]) {
-        if (merged[key] !== undefined && merged[key] !== null) {
+        if (
+          item[key] !== "" &&
+          item[key] !== undefined &&
+          item[key] !== null &&
+          merged[key] !== "" &&
+          merged[key] !== undefined &&
+          merged[key] !== null
+        ) {
           merged[key] = [merged[key], item[key]];
         } else {
-          merged[key] = item[key];
+          if (
+            item[key] !== "" &&
+            item[key] !== undefined &&
+            item[key] !== null
+          ) {
+            merged[key] = [].push(item[key]);
+          } else merged[key] = [];
         }
       }
     }
@@ -145,7 +186,6 @@ function transformData(data, parentFolder, parentUID) {
       lock: {},
       measure_additional_info: null,
       measure_location: measureLocation,
-      measure_name: measureName,
       measure_purpose: measurePurpose,
       measure_response: measureResponse,
       measure_type: measureType,
@@ -192,9 +232,9 @@ function transformData(data, parentFolder, parentUID) {
     };
   });
 
-  // Group items with the same measure_name and merge their data
+  // Group items with the same title and merge their data
   const groupedData = mappedData.reduce((acc, item) => {
-    const measureID = item.measure_name
+    const measureID = item.title
       .replace(/[^a-zA-Z0-9 ]/g, "_")
       .replace(/\s+/g, "_")
       .substring(0, 50)
@@ -202,14 +242,31 @@ function transformData(data, parentFolder, parentUID) {
       .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "");
 
     const existingItem = acc.find(
-      (groupedItem) => groupedItem.measure_name === item.measure_name
+      (groupedItem) => groupedItem.title === item.title
     );
-
     if (!existingItem) {
+      // Transform all field names (except title) into an array of strings
+      const transformedItem = {};
+      measure_field_names.forEach((fieldName) => {
+        if (fieldName === "title") {
+          transformedItem[fieldName] = item[fieldName];
+        } else if (
+          item[fieldName] !== null &&
+          item[fieldName] !== "" &&
+          item[fieldName] !== undefined
+        ) {
+          transformedItem[fieldName] = [item[fieldName]];
+        } else {
+          transformedItem[fieldName] = [];
+        }
+      });
+
       acc.push({
-        ...item,
+        ...transformedItem,
         id: measureID,
+        title: item.title,
         "@id": `${parentFolder}/${measureID}`,
+        "@type": "spmeasure",
         UID: generateUID(),
         parent: {
           "@id": parentFolder,
