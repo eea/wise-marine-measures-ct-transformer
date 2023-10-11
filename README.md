@@ -1,4 +1,4 @@
-# volto-measures-transformer
+# wise-marine-measures-ct-transformer
 
 Data was retrieved using curl -XGET http://<elasticsearch_ip>:9200/<index_name>/\_search?size=10000 | jq -c '.hits.hits[]."\_source"' > data.json on the elastic search endpoint queried here https://water.europa.eu/marine/state-of-europe-seas/marine-sectors-catalogue-of-measures/charts?size=n_10_n and dumped into es_data.json/es_data2.js(exported js const)
 
