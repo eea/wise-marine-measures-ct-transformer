@@ -98,49 +98,49 @@ const generateGeolocation = (countryCov) => {
   return geoLoc;
 };
 
-const mergeObjects = (merged, item) => {
-  for (const key in item) {
-    if (!omitFields.includes(key) && measure_field_names.includes(key)) {
-      if (!merged.hasOwnProperty(key)) {
-        if (item[key] !== "" && item[key] !== undefined && item[key] !== null) {
-          merged[key] = [].push(item[key]);
-        } else merged[key] = [];
-      } else if (Array.isArray(merged[key])) {
-        if (
-          item[key] !== "" &&
-          item[key] !== undefined &&
-          item[key] !== null &&
-          merged[key] !== "" &&
-          merged[key] !== undefined &&
-          merged[key] !== null &&
-          !merged[key].includes(item[key])
-        ) {
-          merged[key].push(item[key]);
-        }
-      } else if (merged[key] !== item[key]) {
-        if (
-          item[key] !== "" &&
-          item[key] !== undefined &&
-          item[key] !== null &&
-          merged[key] !== "" &&
-          merged[key] !== undefined &&
-          merged[key] !== null
-        ) {
-          merged[key] = [merged[key], item[key]];
-        } else {
-          if (
-            item[key] !== "" &&
-            item[key] !== undefined &&
-            item[key] !== null
-          ) {
-            merged[key] = [].push(item[key]);
-          } else merged[key] = [];
-        }
-      }
-    }
-  }
-  return merged;
-};
+// const mergeObjects = (merged, item) => {
+//   for (const key in item) {
+//     if (!omitFields.includes(key) && measure_field_names.includes(key)) {
+//       if (!merged.hasOwnProperty(key)) {
+//         if (item[key] !== "" && item[key] !== undefined && item[key] !== null) {
+//           merged[key] = [].push(item[key]);
+//         } else merged[key] = [];
+//       } else if (Array.isArray(merged[key])) {
+//         if (
+//           item[key] !== "" &&
+//           item[key] !== undefined &&
+//           item[key] !== null &&
+//           merged[key] !== "" &&
+//           merged[key] !== undefined &&
+//           merged[key] !== null &&
+//           !merged[key].includes(item[key])
+//         ) {
+//           merged[key].push(item[key]);
+//         }
+//       } else if (merged[key] !== item[key]) {
+//         if (
+//           item[key] !== "" &&
+//           item[key] !== undefined &&
+//           item[key] !== null &&
+//           merged[key] !== "" &&
+//           merged[key] !== undefined &&
+//           merged[key] !== null
+//         ) {
+//           merged[key] = [merged[key], item[key]];
+//         } else {
+//           if (
+//             item[key] !== "" &&
+//             item[key] !== undefined &&
+//             item[key] !== null
+//           ) {
+//             merged[key] = [].push(item[key]);
+//           } else merged[key] = [];
+//         }
+//       }
+//     }
+//   }
+//   return merged;
+// };
 
 function transformData(data, parentFolder, parentUID) {
   console.log("Initial Array is :", data.length, " items long");
@@ -209,18 +209,29 @@ function transformData(data, parentFolder, parentUID) {
       Categories,
     } = item._source;
 
-    let measureID = measureName
+    // Construct title using measureName and CodeCatalogue
+    let title = `${measureName} ${CodeCatalogue}`
+      .replace(/[^a-zA-Z0-9 ]/g, " ")
+      .replace(/\s+/g, " ");
+
+    // Construct measureID from the title
+    let measureID = title
+      .toLowerCase()
       .replace(/[^a-zA-Z0-9 ]/g, "_")
-      .replace(/\s+/g, "_")
-      .substring(0, 50)
-      .toLowerCase();
+      .replace(/\s+/g, "_");
 
     // Remove leading underscores from measureID
     measureID = measureID.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "");
 
-    return {
+    console.log(title, "title");
+    console.log(measureID, "measureID");
+
+    var transformedItem = {
       "@id": `${parentFolder}/${measureID}`,
       "@type": "spmeasure",
+      id: measureID,
+      title,
+      code: CodeCatalogue ? CodeCatalogue : "Not specified",
       UID: generateUID(),
       allow_discussion: false,
       approaching_areas: approachingAreas,
@@ -233,7 +244,6 @@ function transformData(data, parentFolder, parentUID) {
       descriptors: Descriptors,
       ecological_impacts: ecologicalImpacts,
       future_scenarios: futureScenarios,
-      effective: null,
       effect_on_hydromorphology: effectOnHydromorphology,
       expires: null,
       id: measureID,
@@ -272,16 +282,17 @@ function transformData(data, parentFolder, parentUID) {
         description: "Work in progress",
         image_field: null,
         image_scales: null,
-        review_state: "private",
+        review_state: "published",
         title: parentFolder,
       },
+      effective: new Date().toISOString(),
       pressure_name: pressureName,
       pressure_type: pressureType,
       priority_areas: priorityAreas,
       ranking: Ranking,
       relevant_targets: relevantTargets,
       relevant_features_from_msfd_annex_iii: relevantFeaturesFromMSFDAnnexIII,
-      review_state: "private",
+      review_state: "published",
       region,
       rights: "",
       season: Season,
@@ -290,7 +301,6 @@ function transformData(data, parentFolder, parentUID) {
       spatial_scope: spatialScope,
       status: Status,
       subjects: [],
-      title: measureName,
       traffic_separation_scheme: trafficSeparationScheme,
       type_of_pressure: typeOfPressure,
       use: useOrActivity,
@@ -302,95 +312,48 @@ function transformData(data, parentFolder, parentUID) {
             action: null,
             actor: "andrei",
             comments: "",
-            review_state: "private",
+            review_state: "published",
             time: new Date().toISOString(),
           },
         ],
       },
       working_copy: null,
       working_copy_of: null,
+      topics: [
+        {
+          title: "Water",
+          token: "term45",
+        },
+      ],
+      temporal_coverage: {
+        temporal: [
+          {
+            label: "2021",
+            value: "2021",
+          },
+        ],
+      },
+      publisher: ["EEA"],
+      other_organisations: ["ETC/ICM"],
+      geo_coverage: {
+        geolocation: item?.country_coverage
+          ? generateGeolocation(item.country_coverage)
+          : "",
+      },
     };
+
+    measure_field_names.forEach((field) => {
+      if (item[field]) {
+        transformedItem[field] = Array.isArray(item[field])
+          ? item[field].map((val) => val.value)
+          : [item[field].value];
+      }
+    });
+
+    return transformedItem;
   });
 
-  // Group items with the same title and merge their data
-  const groupedData = mappedData.reduce((acc, item) => {
-    const measureID = item.title
-      .replace(/[^a-zA-Z0-9 ]/g, "_")
-      .replace(/\s+/g, "_")
-      .substring(0, 50)
-      .toLowerCase()
-      .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "");
-
-    const existingItem = acc.find(
-      (groupedItem) => groupedItem.title === item.title
-    );
-    if (!existingItem) {
-      // Transform all field names (except title) into an array of strings
-      const transformedItem = {};
-      measure_field_names.forEach((fieldName) => {
-        if (fieldName === "title") {
-          transformedItem[fieldName] = item[fieldName];
-        } else if (
-          item[fieldName] !== null &&
-          item[fieldName] !== "" &&
-          item[fieldName] !== undefined
-        ) {
-          transformedItem[fieldName] = [item[fieldName]];
-        } else {
-          transformedItem[fieldName] = [];
-        }
-      });
-
-      acc.push({
-        ...transformedItem,
-        id: measureID,
-        title: item.title,
-        "@id": `${parentFolder}/${measureID}`,
-        "@type": "spmeasure",
-        UID: generateUID(),
-        parent: {
-          "@id": parentFolder,
-          "@type": "Document",
-          UID: parentUID,
-          description: "Work in progress",
-          image_field: null,
-          image_scales: null,
-          review_state: "private",
-          title: parentFolder,
-        },
-        topics: ["Marine", "Water and marine environment"],
-        temporal_coverage: {
-          temporal: [
-            {
-              label: "2021",
-              value: "2021",
-            },
-          ],
-        },
-        publisher: ["EEA"],
-        other_organisations: ["ETC/ICM"],
-        geo_coverage: {
-          geolocation: [
-            {
-              label: "Albania",
-              value: "geo-783754",
-            },
-            {
-              label: "Portugal",
-              value: "geo-2264397",
-            },
-          ],
-        },
-      });
-    } else {
-      mergeObjects(existingItem, item);
-    }
-
-    return acc;
-  }, []);
-
-  // Set eea core metadata country coverage with codes
-  const withGeoCoverage = groupedData.map((item, i) => {
+  const withGeoCoverage = mappedData.map((item, i) => {
     const newItem = { ...item };
     newItem.geo_coverage = {
       geolocation: item?.country_coverage
